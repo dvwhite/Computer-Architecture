@@ -2,12 +2,37 @@
 
 import sys
 
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        # R5 is reserved as the interrupt mask (IM)
+        # R6 is reserved as the interrupt status (IS)
+        # R7 is reserved as the stack pointer (SP)
+        self.reg = [0] * 8  # 8 x 8-bit of registers R0-R7
+
+        # PC: Program Counter, address of the currently executing instruction
+        self.pc = 0
+
+        # IR: Instruction Register, contains a copy of the currently executing
+        # instruction
+        self.ir = 0
+
+        # FL: Flags
+        # Bits: 00000LGE
+        # The register is made up of 8 bits.
+        # If a particular bit is set, that flag is "true".
+        self.fl = 0
+
+        # 256 bytes of RAM
+        self.ram = [0] * 256
+
+        self.op_to_bin = {
+            'LDI': 0b10000010,
+            'HLT': 0b00000001
+        }
 
     def load(self):
         """Load a program into memory."""
