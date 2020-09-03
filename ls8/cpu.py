@@ -55,6 +55,10 @@ class CPU:
             self.ram[address] = instruction
             address += 1
 
+    def ram_read(self, mar):
+        """Returns the value stored in the memory address"""
+        mdr = self.ram[mar]
+        return mdr
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
