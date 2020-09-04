@@ -45,7 +45,7 @@ class CPU:
             0b10100000: 'ADD',
             0b10100011: 'DIV',
             0b10100010: 'MUL',
-            0b10000111: 'PRN',
+            0b01000111: 'PRN',
             0b10100001: 'SUB'
         }
 
@@ -87,8 +87,12 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "DIV":
+            self.reg[reg_a] /= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -116,26 +120,59 @@ class CPU:
         """Run the CPU."""
         ARITHMETIC_OPS = ['ADD', 'SUB', 'MUL', 'DIV']
         running = True
+        branch = BranchTable(self.ram, self.reg, self.pc)
 
         while running:
             ir = self.ram[self.pc]
+            op = self.bin_to_op[ir]
 
-            # Determine the opcode
-            if ir == self.op_to_bin['LDI']:
-                reg = self.ram[self.pc + 1]
-                ii = self.ram[self.pc + 2]
-                self.reg[reg] = ii
-                self.pc += 3
-            elif ir == self.op_to_bin['PRN']:
-                reg = self.ram[self.pc + 1]
-                print(self.reg[reg])
-                self.pc += 2
+            # Halt
+            if ir == self.op_to_bin['HLT']:
+                running = False
             # Arithmetic operations
             elif self.bin_to_op[ir] in ARITHMETIC_OPS:
                 reg1 = self.ram[self.pc + 1]
                 reg2 = self.ram[self.pc + 2]
-                self.alu(self.bin_to_op, reg1, reg2)
+                self.alu(self.bin_to_op[ir], reg1, reg2)
                 self.pc += 3
-            # Halt
-            elif ir == self.op_to_bin['HLT']:
-                running = False
+            else:
+                branch.update(self.ram, self.reg, self.pc)
+                branch.table[op](ir)
+                self.ram = branch.ram
+                self.reg = branch.reg
+                self.pc = branch.pc
+
+
+class BranchTable:
+    def __init__(self, ram, reg, pc):
+        self.ram = ram
+        self.reg = reg
+        self.pc = pc
+        self.table = {}
+        self.table['LDI'] = self.handle_LDI
+        self.table['PRN'] = self.handle_PRN
+        self.bin_to_op = {
+            0b10000010: 'LDI',
+            0b00000001: 'HLT',
+            0b10100000: 'ADD',
+            0b10100011: 'DIV',
+            0b10100010: 'MUL',
+            0b10000111: 'PRN',
+            0b10100001: 'SUB'
+        }
+
+    def update(self, ram, reg, pc):
+        self.ram = ram
+        self.reg = reg
+        self.pc = pc
+
+    def handle_LDI(self, ir):
+        reg = self.ram[self.pc + 1]
+        ii = self.ram[self.pc + 2]
+        self.reg[reg] = ii
+        self.pc += 3
+
+    def handle_PRN(self, ir):
+        reg = self.ram[self.pc + 1]
+        print(self.reg[reg])
+        self.pc += 2
