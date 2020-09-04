@@ -32,8 +32,21 @@ class CPU:
         self.op_to_bin = {
             'LDI': 0b10000010,
             'HLT': 0b00000001,
-            'MUL': 0b01010010,
-            'PRN': 0b01000111
+            'ADD': 0b10100000,
+            'DIV': 0b10100011,
+            'MUL': 0b10100010,
+            'PRN': 0b01000111,
+            'SUB': 0b10100001
+        }
+
+        self.bin_to_op = {
+            0b10000010: 'LDI',
+            0b00000001: 'HLT',
+            0b10100000: 'ADD',
+            0b10100011: 'DIV',
+            0b10100010: 'MUL',
+            0b10000111: 'PRN',
+            0b10100001: 'SUB'
         }
 
     def load(self, program):
@@ -74,7 +87,8 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        # elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -100,6 +114,7 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
+        ARITHMETIC_OPS = ['ADD', 'SUB', 'MUL', 'DIV']
         running = True
 
         while running:
@@ -115,5 +130,12 @@ class CPU:
                 reg = self.ram[self.pc + 1]
                 print(self.reg[reg])
                 self.pc += 2
+            # Arithmetic operations
+            elif self.bin_to_op[ir] in ARITHMETIC_OPS:
+                reg1 = self.ram[self.pc + 1]
+                reg2 = self.ram[self.pc + 2]
+                self.alu(self.bin_to_op, reg1, reg2)
+                self.pc += 3
+            # Halt
             elif ir == self.op_to_bin['HLT']:
                 running = False
