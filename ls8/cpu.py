@@ -31,29 +31,34 @@ class CPU:
 
         self.op_to_bin = {
             'LDI': 0b10000010,
-            'HLT': 0b00000001
+            'HLT': 0b00000001,
+            'MUL': 0b01010010,
+            'PRN': 0b01000111
         }
 
-    def load(self):
+    def load(self, program):
         """Load a program into memory."""
 
         address = 0
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010,  # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111,  # PRN R0
-            0b00000000,
-            0b00000001,  # HLT
-        ]
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010,  # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111,  # PRN R0
+        #     0b00000000,
+        #     0b00000001,  # HLT
+        # ]
 
         for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+            if instruction:
+                instruction = instruction.split()[0]  # Remove the comment
+                if instruction[0] != '#':
+                    self.ram[address] = int(instruction, 2)
+                    address += 1
 
     def ram_read(self, mar):
         """Returns the value stored in the memory address"""
@@ -95,4 +100,20 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        running = True
+
+        while running:
+            ir = self.ram[self.pc]
+
+            # Determine the opcode
+            if ir == self.op_to_bin['LDI']:
+                reg = self.ram[self.pc + 1]
+                ii = self.ram[self.pc + 2]
+                self.reg[reg] = ii
+                self.pc += 3
+            elif ir == self.op_to_bin['PRN']:
+                reg = self.ram[self.pc + 1]
+                print(self.reg[reg])
+                self.pc += 2
+            elif ir == self.op_to_bin['HLT']:
+                running = False
