@@ -2,6 +2,9 @@
 
 import sys
 
+# Constants
+SP = 7
+
 
 class CPU:
     """Main CPU class."""
@@ -26,6 +29,10 @@ class CPU:
         # If a particular bit is set, that flag is "true".
         self.fl = 0
 
+        # The stack pointer
+        # Initializes to F4
+        self.reg[SP] = 0xF4
+
         # 256 bytes of RAM
         self.ram = [0] * 256
 
@@ -36,7 +43,9 @@ class CPU:
             'DIV': 0b10100011,
             'MUL': 0b10100010,
             'PRN': 0b01000111,
-            'SUB': 0b10100001
+            'SUB': 0b10100001,
+            'POP': 0b01000110,
+            'PUSH': 0b01000101
         }
 
         self.bin_to_op = {
@@ -46,7 +55,9 @@ class CPU:
             0b10100011: 'DIV',
             0b10100010: 'MUL',
             0b01000111: 'PRN',
-            0b10100001: 'SUB'
+            0b10100001: 'SUB',
+            0b01000110: 'POP',
+            0b01000101: 'PUSH'
         }
 
     def load(self, program):
@@ -54,18 +65,7 @@ class CPU:
 
         address = 0
 
-        # For now, we've just hardcoded a program:
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010,  # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111,  # PRN R0
-        #     0b00000000,
-        #     0b00000001,  # HLT
-        # ]
-
+        # Load in the program instructions
         for instruction in program:
             if instruction:
                 instruction = instruction.split()[0]  # Remove the comment
@@ -120,7 +120,7 @@ class CPU:
         """Run the CPU."""
         ARITHMETIC_OPS = ['ADD', 'SUB', 'MUL', 'DIV']
         running = True
-        branch = BranchTable(self.ram, self.reg, self.pc)
+        branch = BranchTable(ram=None, reg=None, pc=0)
 
         while running:
             ir = self.ram[self.pc]
@@ -138,19 +138,19 @@ class CPU:
             else:
                 branch.update(self.ram, self.reg, self.pc)
                 branch.table[op](ir)
-                self.ram = branch.ram
-                self.reg = branch.reg
                 self.pc = branch.pc
 
 
 class BranchTable:
-    def __init__(self, ram, reg, pc):
+    def __init__(self, ram=None, reg=None, pc=0):
         self.ram = ram
         self.reg = reg
         self.pc = pc
         self.table = {}
         self.table['LDI'] = self.handle_LDI
         self.table['PRN'] = self.handle_PRN
+        self.table['POP'] = self.handle_pop
+        self.table['PUSH'] = self.handle_push
         self.bin_to_op = {
             0b10000010: 'LDI',
             0b00000001: 'HLT',
@@ -158,7 +158,9 @@ class BranchTable:
             0b10100011: 'DIV',
             0b10100010: 'MUL',
             0b10000111: 'PRN',
-            0b10100001: 'SUB'
+            0b10100001: 'SUB',
+            0b01000110: 'POP',
+            0b01000101: 'PUSH'
         }
 
     def update(self, ram, reg, pc):
@@ -171,6 +173,24 @@ class BranchTable:
         ii = self.ram[self.pc + 2]
         self.reg[reg] = ii
         self.pc += 3
+
+    def handle_push(self, ir):
+        # Write the value of a register to the memory at
+        # the SP location in the stack
+        reg = self.ram[self.pc + 1]
+        register_value = self.reg[reg]
+        self.reg[SP] -= 1
+        self.ram[self.reg[SP]] = register_value
+        self.pc += 2
+
+    def handle_pop(self, ir):
+        # Write the value at the SP location in the stack to
+        # a register
+        reg = self.ram[self.pc + 1]
+        memory_value = self.ram[self.reg[SP]]
+        self.reg[reg] = memory_value
+        self.reg[SP] += 1
+        self.pc += 2
 
     def handle_PRN(self, ir):
         reg = self.ram[self.pc + 1]
