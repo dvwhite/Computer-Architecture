@@ -45,7 +45,9 @@ class CPU:
             'PRN': 0b01000111,
             'SUB': 0b10100001,
             'POP': 0b01000110,
-            'PUSH': 0b01000101
+            'PUSH': 0b01000101,
+            'RET': 0b00010001,
+            'CALL': 0b01010000
         }
 
         self.bin_to_op = {
@@ -57,7 +59,9 @@ class CPU:
             0b01000111: 'PRN',
             0b10100001: 'SUB',
             0b01000110: 'POP',
-            0b01000101: 'PUSH'
+            0b01000101: 'PUSH',
+            0b00010001: 'RET',
+            0b01010000: 'CALL'
         }
 
     def load(self, program):
@@ -149,8 +153,10 @@ class BranchTable:
         self.table = {}
         self.table['LDI'] = self.handle_LDI
         self.table['PRN'] = self.handle_PRN
-        self.table['POP'] = self.handle_pop
-        self.table['PUSH'] = self.handle_push
+        self.table['POP'] = self.handle_POP
+        self.table['PUSH'] = self.handle_PUSH
+        self.table['CALL'] = self.handle_CALL
+        self.table['RET'] = self.handle_RET
         self.bin_to_op = {
             0b10000010: 'LDI',
             0b00000001: 'HLT',
@@ -160,7 +166,9 @@ class BranchTable:
             0b10000111: 'PRN',
             0b10100001: 'SUB',
             0b01000110: 'POP',
-            0b01000101: 'PUSH'
+            0b01000101: 'PUSH',
+            0b00010001: 'RET',
+            0b01010000: 'CALL'
         }
 
     def update(self, ram, reg, pc):
@@ -174,7 +182,12 @@ class BranchTable:
         self.reg[reg] = ii
         self.pc += 3
 
-    def handle_push(self, ir):
+    def handle_PRN(self, ir):
+        reg = self.ram[self.pc + 1]
+        print(self.reg[reg])
+        self.pc += 2
+
+    def handle_PUSH(self, ir):
         # Write the value of a register to the memory at
         # the SP location in the stack
         reg = self.ram[self.pc + 1]
@@ -183,7 +196,7 @@ class BranchTable:
         self.ram[self.reg[SP]] = register_value
         self.pc += 2
 
-    def handle_pop(self, ir):
+    def handle_POP(self, ir):
         # Write the value at the SP location in the stack to
         # a register
         reg = self.ram[self.pc + 1]
@@ -192,7 +205,13 @@ class BranchTable:
         self.reg[SP] += 1
         self.pc += 2
 
-    def handle_PRN(self, ir):
+    def handle_CALL(self, ir):
         reg = self.ram[self.pc + 1]
-        print(self.reg[reg])
-        self.pc += 2
+        self.reg[SP] += 1
+        self.ram[self.reg[SP]] = self.pc + 2
+        self.pc = self.reg[reg]
+
+    def handle_RET(self, ir):
+        memory_value = self.ram[self.reg[SP]]
+        self.pc = memory_value
+        self.reg[SP] -= 1
